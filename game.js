@@ -23,9 +23,9 @@ let score = 0;
 //  COSTS
 // ══════════════════════════════════════════════════════
 
-function slopeCost(step)      { return round2(Math.pow(2.2, step) * 0.4); }
-function speedCost(count)     { return round2(Math.pow(2.5, count) * 2.0); }
-function multAlphaCost(count) { return round2(Math.pow(1.8, count) * 3.0); }
+function slopeCost(step)      { return round2(Math.pow(1.5, step) * 0.4); }
+function speedCost(count)     { return round2(Math.pow(1.7, count) * 1.5); }
+function multAlphaCost(count) { return round2(Math.pow(1.4, count) * 2.0); }
 const MULT_UNLOCK_COST = 10.0;
 
 function round2(x) { return Math.round(x * 100) / 100; }
@@ -133,7 +133,7 @@ function setupCanvas(canvas) {
   return { ctx, size };
 }
 
-const PAD = 14;
+const PAD = 1;
 
 function chartArea(size) {
   return { x: PAD, y: PAD, w: size - PAD*2, h: size - PAD*2 };
@@ -159,8 +159,7 @@ function drawGen1() {
 
   function uToX(u) { return ar.x + u * ar.w; }
   function dToY(d)  {
-    // max density of the ramp is max(a,b)*2/(a+b), cap at 2.5 for headroom
-    return ar.y + ar.h - Math.min(d / 2.5, 1) * ar.h;
+    return ar.y + ar.h - (d / 2) * ar.h;  // fixed scale: max possible density is 2
   }
 
   // Hit bin
