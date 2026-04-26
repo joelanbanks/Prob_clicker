@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Clicker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <span class="score-label">SCORE</span>
+      <span id="score-val">0.000</span>
+    </div>
+    <div class="header-right">
+      <span class="per-label">E[x] per roll</span>
+      <span id="per-roll-val">~0.333</span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Generator I -->
+    <div class="gen-card">
+      <div class="card-header">
+        <span class="card-title">Generator I</span>
+        <span class="card-sub" id="card-sub">slope 0/10</span>
+      </div>
+      <div class="card-stats">
+        <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="stat-ev">0.333</span></div>
+        <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat-interval">5.0s</span></div>
+        <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="stat-last">—</span></div>
+      </div>
+      <canvas id="gen-canvas" class="gen-canvas"></canvas>
+      <div class="timer-track"><div id="timer-bar" class="timer-fill"></div></div>
+    </div>
+
+    <!-- Multiplier I -->
+    <div class="gen-card">
+      <div class="card-header">
+        <span class="card-title" style="color:var(--mult)">Multiplier I</span>
+        <span class="card-sub" id="mult-sub">locked</span>
+      </div>
+      <div class="card-stats">
+        <div class="stat"><span class="stat-label">α</span><span class="stat-val" id="mult-alpha">2.0</span></div>
+        <div class="stat"><span class="stat-label">E[×]</span><span class="stat-val" id="mult-ev">1.00×</span></div>
+        <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="mult-last">—</span></div>
+      </div>
+      <canvas id="mult-canvas" class="gen-canvas"></canvas>
+      <!-- no timer bar — synced to gen1 -->
+      <div class="lock-overlay" id="lock-overlay">
+        <div class="lock-label">Multiplier I<br>syncs with Gen I</div>
+        <button class="lock-btn" id="btn-unlock-mult">▸ 10.00</button>
+      </div>
+    </div>
+
+    <!-- Upgrades -->
+    <div class="upgrades-panel" id="upgrades-panel">
+      <div class="panel-title">Generator I</div>
+
+      <div class="upgrade-row" id="upg-slope">
+        <div class="upg-info">
+          <div class="upg-name">Slope <span class="upg-step" id="upg-slope-step">0→1</span></div>
+          <div class="upg-desc">More high rolls</div>
+        </div>
+        <button class="upg-btn" id="btn-slope"><span id="cost-slope">—</span></button>
+      </div>
+
+      <div class="upgrade-row" id="upg-speed">
+        <div class="upg-info">
+          <div class="upg-name">Overclock <span class="upg-step" id="upg-speed-step"></span></div>
+          <div class="upg-desc">Interval −5%</div>
+        </div>
+        <button class="upg-btn" id="btn-speed"><span id="cost-speed">—</span></button>
+      </div>
+
+      <div id="ascension-wrap" class="ascension-wrap hidden">
+        <div class="asc-title">⬡ ASCENSION READY</div>
+        <div class="asc-desc">Slope maxed. Ready to ascend.</div>
+        <button class="asc-btn" id="btn-ascend">ASCEND</button>
+      </div>
+
+      <!-- Multiplier upgrades, revealed on unlock -->
+      <div id="mult-upgrades" class="hidden" style="margin-top:0.5rem; border-top:1px solid var(--border); padding-top:0.5rem;">
+        <div class="panel-title" style="margin-bottom:0.4rem;">Multiplier I</div>
+        <div class="upgrade-row" id="upg-mult-alpha">
+          <div class="upg-info">
+            <div class="upg-name">Skew α <span class="upg-step" id="upg-mult-alpha-step"></span></div>
+            <div class="upg-desc">Higher avg multiplier</div>
+          </div>
+          <button class="upg-btn" id="btn-mult-alpha"><span id="cost-mult-alpha">—</span></button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
