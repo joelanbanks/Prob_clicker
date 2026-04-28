@@ -16,6 +16,8 @@
   --mult:       #4ac8f0;
   --mult-dim:   rgba(74,200,240,0.07);
   --mult-mid:   rgba(74,200,240,0.18);
+  --gen2:       #f07a4a;
+  --gen2-dim:   rgba(240,122,74,0.07);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,7 +74,15 @@ main {
   gap: 0.75rem;
   padding: 0.75rem 1.25rem;
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
+}
+
+/* ── Column wrappers ── */
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 /* ── Shared card ── */
@@ -310,5 +320,30 @@ main {
 }
 .asc-btn:hover { background: rgba(240,200,74,0.2); }
 .asc-btn:active { transform: scale(0.97); }
+
+/* ── Gen 2 lock panel ── */
+.gen2-lock-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+  width: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 120px;
+}
+.gen2-lock-panel.hidden { display: none; }
+.lock-sublabel {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-align: center;
+  margin-bottom: 0.2rem;
+}
 
 .hidden { display: none !important; }
