@@ -14,16 +14,15 @@
       <span id="score-val">0.000</span>
     </div>
     <div class="header-right">
-      <span class="per-label">E[x] per roll</span>
-      <span id="per-roll-val">~0.333</span>
+      <span class="per-label">E[x] per second</span>
+      <span id="per-roll-val">~0.333/s</span>
     </div>
   </header>
 
   <main>
 
-    <!-- COLUMN 1: Generator I + II -->
+    <!-- COLUMN 1: Generator I + Multiplier I -->
     <div class="col">
-
       <div class="gen-card">
         <div class="card-header">
           <span class="card-title">Generator I</span>
@@ -31,37 +30,12 @@
         </div>
         <div class="card-stats">
           <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="stat-ev">0.333</span></div>
-          <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat-interval">5.0s</span></div>
+          <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat-interval">1.0s</span></div>
           <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="stat-last">—</span></div>
         </div>
         <canvas id="gen-canvas" class="gen-canvas"></canvas>
         <div class="timer-track"><div id="timer-bar" class="timer-fill"></div></div>
       </div>
-
-      <div class="gen2-lock-panel" id="gen2-lock-panel">
-        <div class="lock-label" style="text-align:center; margin-bottom:0.3rem;">Generator II</div>
-        <div class="lock-sublabel">5x output · 3x interval</div>
-        <button class="lock-btn" id="btn-unlock-gen2">&#9658; 10.00</button>
-      </div>
-
-      <div class="gen-card hidden" id="gen2-card">
-        <div class="card-header">
-          <span class="card-title" style="color:var(--gen2)">Generator II</span>
-          <span class="card-sub" id="card2-sub">slope 0/10</span>
-        </div>
-        <div class="card-stats">
-          <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="stat2-ev">1.667</span></div>
-          <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat2-interval">15.0s</span></div>
-          <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="stat2-last">—</span></div>
-        </div>
-        <canvas id="gen2-canvas" class="gen-canvas"></canvas>
-        <div class="timer-track"><div id="timer-bar2" class="timer-fill" style="background:var(--gen2)"></div></div>
-      </div>
-
-    </div>
-
-    <!-- COLUMN 2: Multiplier I + II -->
-    <div class="col">
 
       <div class="gen-card">
         <div class="card-header">
@@ -78,6 +52,29 @@
           <div class="lock-label">Multiplier I<br>syncs with Gen I</div>
           <button class="lock-btn" id="btn-unlock-mult">&#9658; 10.00</button>
         </div>
+      </div>
+    </div>
+
+    <!-- COLUMN 2: Generator II + Multiplier II -->
+    <div class="col">
+      <div class="gen2-lock-panel" id="gen2-lock-panel">
+        <div class="lock-label" style="text-align:center;margin-bottom:0.3rem">Generator II</div>
+        <div class="lock-sublabel">5× output · 3s interval</div>
+        <button class="lock-btn" id="btn-unlock-gen2">&#9658; 10.00</button>
+      </div>
+
+      <div class="gen-card hidden" id="gen2-card">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--gen2)">Generator II</span>
+          <span class="card-sub" id="card2-sub">slope 0/10</span>
+        </div>
+        <div class="card-stats">
+          <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="stat2-ev">0.833</span></div>
+          <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat2-interval">3.0s</span></div>
+          <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="stat2-last">—</span></div>
+        </div>
+        <canvas id="gen2-canvas" class="gen-canvas"></canvas>
+        <div class="timer-track"><div id="timer-bar2" class="timer-fill" style="background:var(--gen2)"></div></div>
       </div>
 
       <div class="gen-card hidden" id="mult2-card">
@@ -96,15 +93,92 @@
           <button class="lock-btn" id="btn-unlock-mult2">&#9658; 100.00</button>
         </div>
       </div>
-
     </div>
 
-    <!-- COLUMN 3: Upgrades I + II -->
+    <!-- COLUMN 3: Generator III + Multiplier III -->
     <div class="col">
+      <div class="gen2-lock-panel" id="gen3-lock-panel">
+        <div class="lock-label" style="text-align:center;margin-bottom:0.3rem;color:var(--gen3)">Generator III</div>
+        <div class="lock-sublabel">25× output · 10s interval</div>
+        <button class="lock-btn" id="btn-unlock-gen3" style="color:var(--gen3);border-color:rgba(176,74,240,0.4);background:rgba(176,74,240,0.07)">&#9658; 100.00</button>
+      </div>
 
+      <div class="gen-card hidden" id="gen3-card">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--gen3)">Generator III</span>
+          <span class="card-sub" id="card3-sub">slope 0/10</span>
+        </div>
+        <div class="card-stats">
+          <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="stat3-ev">2.083</span></div>
+          <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat3-interval">10.0s</span></div>
+          <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="stat3-last">—</span></div>
+        </div>
+        <canvas id="gen3-canvas" class="gen-canvas"></canvas>
+        <div class="timer-track"><div id="timer-bar3" class="timer-fill" style="background:var(--gen3)"></div></div>
+      </div>
+
+      <div class="gen-card hidden" id="mult3-card">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--mult)">Multiplier III</span>
+          <span class="card-sub" id="mult3-sub">locked</span>
+        </div>
+        <div class="card-stats">
+          <div class="stat"><span class="stat-label">alpha</span><span class="stat-val" id="mult3-alpha">2.0</span></div>
+          <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="mult3-ev">1.00x</span></div>
+          <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="mult3-last">—</span></div>
+        </div>
+        <canvas id="mult3-canvas" class="gen-canvas"></canvas>
+        <div class="lock-overlay" id="lock-overlay3">
+          <div class="lock-label">Multiplier III<br>syncs with Gen III</div>
+          <button class="lock-btn" id="btn-unlock-mult3">&#9658; 1000.00</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUMN 4: Generator IV + Multiplier IV -->
+    <div class="col">
+      <div class="gen2-lock-panel" id="gen4-lock-panel">
+        <div class="lock-label" style="text-align:center;margin-bottom:0.3rem;color:var(--gen4)">Generator IV</div>
+        <div class="lock-sublabel">125× output · 30s interval</div>
+        <button class="lock-btn" id="btn-unlock-gen4" style="color:var(--gen4);border-color:rgba(240,74,154,0.4);background:rgba(240,74,154,0.07)">&#9658; 1000.00</button>
+      </div>
+
+      <div class="gen-card hidden" id="gen4-card">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--gen4)">Generator IV</span>
+          <span class="card-sub" id="card4-sub">slope 0/10</span>
+        </div>
+        <div class="card-stats">
+          <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="stat4-ev">5.208</span></div>
+          <div class="stat"><span class="stat-label">ivl</span><span class="stat-val" id="stat4-interval">30.0s</span></div>
+          <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="stat4-last">—</span></div>
+        </div>
+        <canvas id="gen4-canvas" class="gen-canvas"></canvas>
+        <div class="timer-track"><div id="timer-bar4" class="timer-fill" style="background:var(--gen4)"></div></div>
+      </div>
+
+      <div class="gen-card hidden" id="mult4-card">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--mult)">Multiplier IV</span>
+          <span class="card-sub" id="mult4-sub">locked</span>
+        </div>
+        <div class="card-stats">
+          <div class="stat"><span class="stat-label">alpha</span><span class="stat-val" id="mult4-alpha">2.0</span></div>
+          <div class="stat"><span class="stat-label">E[x]</span><span class="stat-val" id="mult4-ev">1.00x</span></div>
+          <div class="stat"><span class="stat-label">last</span><span class="stat-val" id="mult4-last">—</span></div>
+        </div>
+        <canvas id="mult4-canvas" class="gen-canvas"></canvas>
+        <div class="lock-overlay" id="lock-overlay4">
+          <div class="lock-label">Multiplier IV<br>syncs with Gen IV</div>
+          <button class="lock-btn" id="btn-unlock-mult4">&#9658; 10000.00</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUMN 5: Upgrades I + II -->
+    <div class="col">
       <div class="upgrades-panel" id="upgrades-panel">
         <div class="panel-title">Generator I</div>
-
         <div class="upgrade-row" id="upg-slope">
           <div class="upg-info">
             <div class="upg-name">Slope <span class="upg-step" id="upg-slope-step">0 to 1</span></div>
@@ -112,7 +186,6 @@
           </div>
           <button class="upg-btn" id="btn-slope"><span id="cost-slope">—</span></button>
         </div>
-
         <div class="upgrade-row" id="upg-speed">
           <div class="upg-info">
             <div class="upg-name">Overclock <span class="upg-step" id="upg-speed-step"></span></div>
@@ -120,15 +193,13 @@
           </div>
           <button class="upg-btn" id="btn-speed"><span id="cost-speed">—</span></button>
         </div>
-
         <div id="ascension-wrap" class="ascension-wrap hidden">
           <div class="asc-title">ASCENSION READY</div>
-          <div class="asc-desc">Slope maxed. Reset slope, raise curve to ^<span id="asc-power-preview">1.1</span>.</div>
+          <div class="asc-desc">Slope maxed. Reset slope, raise curve.</div>
           <button class="asc-btn" id="btn-ascend">ASCEND</button>
         </div>
-
-        <div id="mult-upgrades" class="hidden" style="margin-top:0.5rem; border-top:1px solid var(--border); padding-top:0.5rem;">
-          <div class="panel-title" style="margin-bottom:0.4rem;">Multiplier I</div>
+        <div id="mult-upgrades" class="hidden" style="margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.5rem">
+          <div class="panel-title" style="margin-bottom:0.4rem">Multiplier I</div>
           <div class="upgrade-row" id="upg-mult-alpha">
             <div class="upg-info">
               <div class="upg-name">Skew alpha <span class="upg-step" id="upg-mult-alpha-step"></span></div>
@@ -141,7 +212,6 @@
 
       <div class="upgrades-panel hidden" id="upgrades2-panel">
         <div class="panel-title" style="color:var(--gen2)">Generator II</div>
-
         <div class="upgrade-row" id="upg-slope2">
           <div class="upg-info">
             <div class="upg-name">Slope <span class="upg-step" id="upg-slope2-step">0 to 1</span></div>
@@ -149,7 +219,6 @@
           </div>
           <button class="upg-btn" id="btn-slope2"><span id="cost-slope2">—</span></button>
         </div>
-
         <div class="upgrade-row" id="upg-speed2">
           <div class="upg-info">
             <div class="upg-name">Overclock <span class="upg-step" id="upg-speed2-step"></span></div>
@@ -157,15 +226,13 @@
           </div>
           <button class="upg-btn" id="btn-speed2"><span id="cost-speed2">—</span></button>
         </div>
-
         <div id="ascension2-wrap" class="ascension-wrap hidden">
           <div class="asc-title">ASCENSION READY</div>
-          <div class="asc-desc">Slope maxed. Reset slope, raise curve to ^<span id="asc2-power-preview">1.1</span>.</div>
+          <div class="asc-desc">Slope maxed. Reset slope, raise curve.</div>
           <button class="asc-btn" id="btn-ascend2">ASCEND</button>
         </div>
-
-        <div id="mult2-upgrades" class="hidden" style="margin-top:0.5rem; border-top:1px solid var(--border); padding-top:0.5rem;">
-          <div class="panel-title" style="margin-bottom:0.4rem;">Multiplier II</div>
+        <div id="mult2-upgrades" class="hidden" style="margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.5rem">
+          <div class="panel-title" style="margin-bottom:0.4rem">Multiplier II</div>
           <div class="upgrade-row" id="upg-mult-alpha2">
             <div class="upg-info">
               <div class="upg-name">Skew alpha <span class="upg-step" id="upg-mult-alpha2-step"></span></div>
@@ -175,7 +242,75 @@
           </div>
         </div>
       </div>
+    </div>
 
+    <!-- COLUMN 6: Upgrades III + IV -->
+    <div class="col">
+      <div class="upgrades-panel hidden" id="upgrades3-panel">
+        <div class="panel-title" style="color:var(--gen3)">Generator III</div>
+        <div class="upgrade-row" id="upg-slope3">
+          <div class="upg-info">
+            <div class="upg-name">Slope <span class="upg-step" id="upg-slope3-step">0 to 1</span></div>
+            <div class="upg-desc">More high rolls</div>
+          </div>
+          <button class="upg-btn" id="btn-slope3"><span id="cost-slope3">—</span></button>
+        </div>
+        <div class="upgrade-row" id="upg-speed3">
+          <div class="upg-info">
+            <div class="upg-name">Overclock <span class="upg-step" id="upg-speed3-step"></span></div>
+            <div class="upg-desc">Interval -5%</div>
+          </div>
+          <button class="upg-btn" id="btn-speed3"><span id="cost-speed3">—</span></button>
+        </div>
+        <div id="ascension3-wrap" class="ascension-wrap hidden">
+          <div class="asc-title">ASCENSION READY</div>
+          <div class="asc-desc">Slope maxed. Reset slope, raise curve.</div>
+          <button class="asc-btn" id="btn-ascend3">ASCEND</button>
+        </div>
+        <div id="mult3-upgrades" class="hidden" style="margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.5rem">
+          <div class="panel-title" style="margin-bottom:0.4rem">Multiplier III</div>
+          <div class="upgrade-row" id="upg-mult-alpha3">
+            <div class="upg-info">
+              <div class="upg-name">Skew alpha <span class="upg-step" id="upg-mult-alpha3-step"></span></div>
+              <div class="upg-desc">Higher avg multiplier</div>
+            </div>
+            <button class="upg-btn" id="btn-mult-alpha3"><span id="cost-mult-alpha3">—</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="upgrades-panel hidden" id="upgrades4-panel">
+        <div class="panel-title" style="color:var(--gen4)">Generator IV</div>
+        <div class="upgrade-row" id="upg-slope4">
+          <div class="upg-info">
+            <div class="upg-name">Slope <span class="upg-step" id="upg-slope4-step">0 to 1</span></div>
+            <div class="upg-desc">More high rolls</div>
+          </div>
+          <button class="upg-btn" id="btn-slope4"><span id="cost-slope4">—</span></button>
+        </div>
+        <div class="upgrade-row" id="upg-speed4">
+          <div class="upg-info">
+            <div class="upg-name">Overclock <span class="upg-step" id="upg-speed4-step"></span></div>
+            <div class="upg-desc">Interval -5%</div>
+          </div>
+          <button class="upg-btn" id="btn-speed4"><span id="cost-speed4">—</span></button>
+        </div>
+        <div id="ascension4-wrap" class="ascension-wrap hidden">
+          <div class="asc-title">ASCENSION READY</div>
+          <div class="asc-desc">Slope maxed. Reset slope, raise curve.</div>
+          <button class="asc-btn" id="btn-ascend4">ASCEND</button>
+        </div>
+        <div id="mult4-upgrades" class="hidden" style="margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.5rem">
+          <div class="panel-title" style="margin-bottom:0.4rem">Multiplier IV</div>
+          <div class="upgrade-row" id="upg-mult-alpha4">
+            <div class="upg-info">
+              <div class="upg-name">Skew alpha <span class="upg-step" id="upg-mult-alpha4-step"></span></div>
+              <div class="upg-desc">Higher avg multiplier</div>
+            </div>
+            <button class="upg-btn" id="btn-mult-alpha4"><span id="cost-mult-alpha4">—</span></button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </main>

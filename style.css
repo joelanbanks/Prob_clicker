@@ -17,7 +17,11 @@
   --mult-dim:   rgba(74,200,240,0.07);
   --mult-mid:   rgba(74,200,240,0.18);
   --gen2:       #f07a4a;
+  --gen3:       #b04af0;
+  --gen4:       #f04a9a;
   --gen2-dim:   rgba(240,122,74,0.07);
+  --gen3-dim:   rgba(176,74,240,0.07);
+  --gen4-dim:   rgba(240,74,154,0.07);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

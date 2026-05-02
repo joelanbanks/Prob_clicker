@@ -1,117 +1,204 @@
 // ══════════════════════════════════════════════════════
-//  STATE
+//  CONSTANTS
 // ══════════════════════════════════════════════════════
 
 const SLOPE_STEPS = 10;
 
-const GEN1 = {
-  slopeStep:      0,
-  interval:       5000,
-  speedCount:     0,
-  ascensionLevel: 0,   // each ascension adds 0.1 to the exponent
-};
+// Gen N config: interval in ms, multiplier vs Gen1 output, costs
+const GEN_CONFIG = [
+  null, // 1-indexed
+  {
+    baseInterval:    1000,
+    minInterval:     100,
+    multiplier:      1,
+    gen_unlockCost:  0,
+    mult_unlockCost: 10,
+    slopeCostBase:   0.8,
+    speedCostBase:   3.0,
+    multAlphaCostBase: 4.0,
+  },
+  {
+    baseInterval:    3000,
+    minInterval:     300,
+    multiplier:      5,
+    gen_unlockCost:  10,
+    mult_unlockCost: 100,
+    slopeCostBase:   5.0,
+    speedCostBase:   18.0,
+    multAlphaCostBase: 24.0,
+  },
+  {
+    baseInterval:    10000,
+    minInterval:     1000,
+    multiplier:      25,
+    gen_unlockCost:  100,
+    mult_unlockCost: 1000,
+    slopeCostBase:   50.0,
+    speedCostBase:   180.0,
+    multAlphaCostBase: 240.0,
+  },
+  {
+    baseInterval:    30000,
+    minInterval:     3000,
+    multiplier:      125,
+    gen_unlockCost:  1000,
+    mult_unlockCost: 10000,
+    slopeCostBase:   500.0,
+    speedCostBase:   1800.0,
+    multAlphaCostBase: 2400.0,
+  },
+];
 
-const MULT1 = {
-  unlocked:   false,
-  alpha:       2.0,
-  beta:        2.0,
-  alphaCount:  0,
-};
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
 
-const GEN2 = {
-  unlocked:   false,
-  slopeStep:  0,
-  interval:   15000,   // 3× Gen1 base
-  speedCount: 0,
-  ascensionLevel: 0,
-};
+function makeGen(n) {
+  return { n, unlocked: n === 1, slopeStep: 0, interval: GEN_CONFIG[n].baseInterval, speedCount: 0, ascensionLevel: 0 };
+}
+function makeMult(n) {
+  return { n, unlocked: false, alpha: 2.0, beta: 2.0, alphaCount: 0 };
+}
 
-const MULT2 = {
-  unlocked:   false,
-  alpha:       2.0,
-  beta:        2.0,
-  alphaCount:  0,
-};
-
+const GENS  = [null, makeGen(1), makeGen(2), makeGen(3), makeGen(4)];
+const MULTS = [null, makeMult(1), makeMult(2), makeMult(3), makeMult(4)];
 let score = 0;
 
 // ══════════════════════════════════════════════════════
 //  COSTS
 // ══════════════════════════════════════════════════════
 
-function slopeCost(step)       { return round2(Math.pow(1.5, step) * 0.4); }
-function speedCost(count)      { return round2(Math.pow(1.7, count) * 1.5); }
-function mult1AlphaCost(count) { return round2(Math.pow(1.4, count) * 2.0); }
-
-// Gen 2 costs — a bit steeper
-function slope2Cost(step)      { return round2(Math.pow(1.5, step) * 2.0); }
-function speed2Cost(count)     { return round2(Math.pow(1.7, count) * 7.5); }
-function mult2AlphaCost(count) { return round2(Math.pow(1.4, count) * 10.0); }
-
-const MULT1_UNLOCK_COST = 10.0;
-const GEN2_UNLOCK_COST  = 10.0;
-const MULT2_UNLOCK_COST = 100.0;
-
+function slopeCost(n, step)      { return round2(Math.pow(1.6, step) * GEN_CONFIG[n].slopeCostBase); }
+function speedCost(n, count)     { return round2(Math.pow(1.8, count) * GEN_CONFIG[n].speedCostBase); }
+function multAlphaCost(n, count) { return round2(Math.pow(1.5, count) * GEN_CONFIG[n].multAlphaCostBase); }
 function round2(x) { return Math.round(x * 100) / 100; }
 
 // ══════════════════════════════════════════════════════
-//  GEN DISTRIBUTION  (linear ramp, raised to power p)
-//  Raw sample u ∈ [0,1] via inverse-CDF of linear ramp,
-//  then result = u^p   where p = 1 + ascensionLevel*0.1
+//  PDF FAMILIES
+//
+//  t = slopeStep / SLOPE_STEPS  (0 = bad start, 1 = good end)
+//
+//  Gen 1: support [0,1]
+//    t=0: f(x)=2(1-x)   EV=1/3
+//    t=1: f(x)=2x        EV=2/3
+//
+//  Gen 2: support [0,1]
+//    t=0: f(x)=2-4x on [0,.5], 0 elsewhere    EV=1/6
+//    t=.5: uniform                              EV=1/2
+//    t=1: f(x)=4x-2 on [.5,1], 0 elsewhere    EV=5/6
+//
+//  Gen 3: support [0,1]
+//    t=0: f(x)=4-16x on [0,.25], 0 elsewhere  EV=1/12
+//    t=.5: uniform                              EV=1/2
+//    t=1: f(x)=16x-12 on [.75,1], 0 elsewhere EV=11/12
+//
+//  Gen 4: support [0,1]
+//    t=0: f(x)=8-64x on [0,.125], 0 elsewhere EV=1/24
+//    t=.5: uniform                              EV=1/2
+//    t=1: f(x)=64x-56 on [.875,1], 0 elsewhere EV=23/24
 // ══════════════════════════════════════════════════════
 
-function genAB(slopeStep) {
-  const t = slopeStep / SLOPE_STEPS;
-  return { a: 1 - t, b: t };
+function slopeT(slopeStep) { return slopeStep / SLOPE_STEPS; }
+
+// Gen 1: standard triangular blend
+function gen1PDF(x, t) {
+  return 2 * ((1-t)*(1-x) + t*x);
+}
+function gen1Sample(t) {
+  const u = Math.random();
+  const a = 2*t - 1, b = 2*(1-t), c = -u;
+  if (Math.abs(a) < 1e-9) return u / Math.max(b, 1e-9);
+  const disc = b*b - 4*a*c;
+  return Math.max(0, Math.min(1, (-b + Math.sqrt(Math.max(0, disc))) / (2*a)));
+}
+function gen1EV(t) { return (1-t)/3 + t*2/3; }
+
+// Blended PDF helpers for gens 2-4
+function blendedPDF(x, t, lo_pdf, hi_pdf) {
+  if (t < 0.5) {
+    const s = t * 2;
+    return (1-s)*lo_pdf(x) + s*1;
+  } else {
+    const s = (t - 0.5) * 2;
+    return (1-s)*1 + s*hi_pdf(x);
+  }
 }
 
-function genRawSample(slopeStep) {
-  const { a, b } = genAB(slopeStep);
-  const p = Math.random();
-  if (Math.abs(b - a) < 1e-9) return p;
-  const A = b - a, B = 2 * a, C = -p * (a + b);
-  return Math.max(0, Math.min(1, (-B + Math.sqrt(B*B - 4*A*C)) / (2*A)));
+function gen2PDF(x, t) {
+  return blendedPDF(x, t,
+    u => (u <= 0.5) ? Math.max(0, 2 - 4*u) : 0,
+    u => (u >= 0.5) ? Math.max(0, 4*u - 2) : 0
+  );
+}
+function gen3PDF(x, t) {
+  return blendedPDF(x, t,
+    u => (u <= 0.25) ? Math.max(0, 4 - 16*u) : 0,
+    u => (u >= 0.75) ? Math.max(0, 16*u - 12) : 0
+  );
+}
+function gen4PDF(x, t) {
+  return blendedPDF(x, t,
+    u => (u <= 0.125) ? Math.max(0, 8 - 64*u) : 0,
+    u => (u >= 0.875) ? Math.max(0, 64*u - 56) : 0
+  );
 }
 
-// Apply ascension power to a raw [0,1] sample
+function numericalInverseCDF(pdfFn, u, N=600) {
+  let cdf = 0;
+  for (let i = 0; i < N; i++) {
+    const x0 = i / N, x1 = (i+1) / N;
+    const xm = (x0+x1)/2;
+    const d = pdfFn(xm) / N;
+    const prev = cdf;
+    cdf += d;
+    if (cdf >= u || i === N-1) {
+      if (d < 1e-12) return x1;
+      return Math.min(1, x0 + (u - prev) / (d * N) / N);
+    }
+  }
+  return 1;
+}
+
+function gen2Sample(t) { return numericalInverseCDF(x => gen2PDF(x, t), Math.random()); }
+function gen3Sample(t) { return numericalInverseCDF(x => gen3PDF(x, t), Math.random()); }
+function gen4Sample(t) { return numericalInverseCDF(x => gen4PDF(x, t), Math.random()); }
+
+function blendEV(t, lo_ev, hi_ev) {
+  if (t < 0.5) { const s=t*2; return (1-s)*lo_ev + s*0.5; }
+  else          { const s=(t-.5)*2; return (1-s)*0.5 + s*hi_ev; }
+}
+function gen2EV(t) { return blendEV(t, 1/6, 5/6); }
+function gen3EV(t) { return blendEV(t, 1/12, 11/12); }
+function gen4EV(t) { return blendEV(t, 1/24, 23/24); }
+
+const GEN_PDF_FNS    = [null, gen1PDF, gen2PDF, gen3PDF, gen4PDF];
+const GEN_SAMPLE_FNS = [null, gen1Sample, gen2Sample, gen3Sample, gen4Sample];
+const GEN_EV_FNS     = [null, gen1EV, gen2EV, gen3EV, gen4EV];
+
 function applyPower(u, ascLvl) {
-  const p = 1 + ascLvl * 0.1;
-  return Math.pow(u, p);
+  if (ascLvl === 0) return u;
+  return Math.pow(Math.max(0, u), 1 + ascLvl * 0.1);
 }
 
-function genSample(slopeStep, ascLvl) {
-  return applyPower(genRawSample(slopeStep), ascLvl);
-}
-
-// E[X^p] where X has the linear-ramp distribution
-// E[X] = (a+2b)/(3(a+b))  — but after the power transform
-// we use numerical integration (100 pts)
-function genEV(slopeStep, ascLvl) {
-  const { a, b } = genAB(slopeStep);
-  const p = 1 + ascLvl * 0.1;
+function genEV(n, g) {
+  const t = slopeT(g.slopeStep);
+  const baseEV = GEN_EV_FNS[n](t);
+  if (g.ascensionLevel === 0) return baseEV;
+  const p = 1 + g.ascensionLevel * 0.1;
   const N = 200;
   let sum = 0;
   for (let i = 0; i < N; i++) {
     const u = (i + 0.5) / N;
-    const pdf = (a + b < 1e-12) ? 1 : 2*(a + (b-a)*u)/(a+b);
-    sum += Math.pow(u, p) * pdf / N;
+    sum += Math.pow(u, p) * GEN_PDF_FNS[n](u, t) / N;
   }
   return sum;
 }
 
-function genPDF(u, slopeStep) {
-  const { a, b } = genAB(slopeStep);
-  if (a + b < 1e-12) return 1;
-  return 2*(a + (b-a)*u) / (a+b);
-}
-
 // ══════════════════════════════════════════════════════
-//  MULTIPLIER DISTRIBUTION  (Beta(alpha, beta), ×2)
+//  MULTIPLIER (Beta)
 // ══════════════════════════════════════════════════════
 
-function randn() {
-  return Math.sqrt(-2*Math.log(Math.random())) * Math.cos(2*Math.PI*Math.random());
-}
+function randn() { return Math.sqrt(-2*Math.log(Math.random())) * Math.cos(2*Math.PI*Math.random()); }
 function gammaSample(shape) {
   if (shape < 1) return gammaSample(1 + shape) * Math.pow(Math.random(), 1/shape);
   const d = shape - 1/3, c = 1/Math.sqrt(9*d);
@@ -124,30 +211,21 @@ function gammaSample(shape) {
     if (Math.log(u) < 0.5*x*x + d*(1 - v + Math.log(v))) return d*v;
   }
 }
-function betaSample(a, b) {
-  const ga = gammaSample(a), gb = gammaSample(b);
-  return ga / (ga + gb);
-}
-
-function multSample(mult)  { return betaSample(mult.alpha, mult.beta) * 2; }
-function multEV(mult)      { return 2 * mult.alpha / (mult.alpha + mult.beta); }
+function betaSample(a, b) { const ga=gammaSample(a), gb=gammaSample(b); return ga/(ga+gb); }
+function multEV(mult)  { return 2 * mult.alpha / (mult.alpha + mult.beta); }
 
 function lnGamma(x) {
-  const g = 7;
-  const c = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
-             771.32342877765313,-176.61502916214059,12.507343278686905,
-             -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  const g=7, c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,
+    -176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
   if (x < 0.5) return Math.log(Math.PI/Math.sin(Math.PI*x)) - lnGamma(1-x);
-  x -= 1;
-  let a = c[0];
-  const t = x + g + 0.5;
-  for (let i = 1; i < g+2; i++) a += c[i]/(x+i);
-  return 0.5*Math.log(2*Math.PI) + (x+0.5)*Math.log(t) - t + Math.log(a);
+  x -= 1; let a=c[0]; const t=x+g+0.5;
+  for (let i=1;i<g+2;i++) a+=c[i]/(x+i);
+  return 0.5*Math.log(2*Math.PI)+(x+0.5)*Math.log(t)-t+Math.log(a);
 }
 function betaPDF(x, a, b) {
-  if (x <= 0 || x >= 1) return 0;
-  const lnB = lnGamma(a) + lnGamma(b) - lnGamma(a+b);
-  return Math.exp((a-1)*Math.log(x) + (b-1)*Math.log(1-x) - lnB);
+  if (x<=0||x>=1) return 0;
+  const lnB=lnGamma(a)+lnGamma(b)-lnGamma(a+b);
+  return Math.exp((a-1)*Math.log(x)+(b-1)*Math.log(1-x)-lnB);
 }
 
 // ══════════════════════════════════════════════════════
@@ -155,275 +233,172 @@ function betaPDF(x, a, b) {
 // ══════════════════════════════════════════════════════
 
 function setupCanvas(canvas) {
-  const rect = canvas.getBoundingClientRect();
-  const dpr  = window.devicePixelRatio || 1;
-  const size = rect.width;
-  canvas.width  = size * dpr;
-  canvas.height = size * dpr;
-  canvas.style.height = size + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { ctx, size };
+  const rect=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1, size=rect.width;
+  canvas.width=size*dpr; canvas.height=size*dpr; canvas.style.height=size+'px';
+  const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, size};
 }
-
-const PAD = 1;
-function chartArea(size) {
-  return { x: PAD, y: PAD, w: size - PAD*2, h: size - PAD*2 };
-}
+const PAD=1;
+function chartArea(size) { return {x:PAD, y:PAD, w:size-PAD*2, h:size-PAD*2}; }
 
 // ══════════════════════════════════════════════════════
-//  DRAW — GENERATOR (generic, used for Gen1 + Gen2)
+//  DRAW — GENERATOR
 // ══════════════════════════════════════════════════════
 
-const BINS = 100;
+const BINS=100;
 
-function drawGenCanvas(ctx, size, slopeStep, ascLvl, hitBin, hitAlpha, accentColor, accentFill) {
-  const ar = chartArea(size);
-  ctx.clearRect(0, 0, size, size);
+function drawGenCanvas(ctx, size, n, g, hitBin, hitAlpha, accentColor, accentFill) {
+  if (!ctx || !size) return;
+  const ar=chartArea(size);
+  ctx.clearRect(0,0,size,size);
 
-  function uToX(u) { return ar.x + u * ar.w; }
-  function dToY(d) { return ar.y + ar.h - (d / 2) * ar.h; }
+  const t=slopeT(g.slopeStep), p=1+g.ascensionLevel*0.1;
+  function uToX(u) { return ar.x+u*ar.w; }
 
-  // Hit bin highlight
-  if (hitBin !== null && hitAlpha > 0) {
-    const x0 = uToX(hitBin / BINS);
-    const x1 = uToX((hitBin+1) / BINS);
-    ctx.save();
-    ctx.globalAlpha = hitAlpha;
-    ctx.fillStyle = accentFill;
-    ctx.fillRect(x0, ar.y, x1-x0, ar.h);
-    const cx = uToX((hitBin+0.5)/BINS);
-    ctx.strokeStyle = accentColor; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(cx, ar.y); ctx.lineTo(cx, ar.y+ar.h); ctx.stroke();
+  // Build display curve (with ascension power transform)
+  const N=150, pts=[];
+  let maxD=0;
+  for (let i=0;i<=N;i++) {
+    const y=i/N;
+    let fy;
+    if (p===1||y<=0) { fy=GEN_PDF_FNS[n](y,t); }
+    else {
+      const u=Math.pow(y,1/p);
+      const fx=GEN_PDF_FNS[n](u,t);
+      fy=fx*(1/p)*Math.pow(y,1/p-1);
+    }
+    const val=isFinite(fy)?Math.max(0,fy):0;
+    pts.push(val); if(val>maxD) maxD=val;
+  }
+  const scale=Math.max(maxD,0.5);
+  const yOf=d=>ar.y+ar.h-(d/scale)*ar.h;
+
+  // Hit highlight
+  if (hitBin!==null && hitAlpha>0) {
+    const x0=uToX(hitBin/BINS), x1=uToX((hitBin+1)/BINS);
+    ctx.save(); ctx.globalAlpha=hitAlpha;
+    ctx.fillStyle=accentFill; ctx.fillRect(x0,ar.y,x1-x0,ar.h);
+    const cx=uToX((hitBin+0.5)/BINS);
+    ctx.strokeStyle=accentColor; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(cx,ar.y); ctx.lineTo(cx,ar.y+ar.h); ctx.stroke();
     ctx.restore();
   }
 
-  // If ascended, draw the transformed PDF curve (sampled numerically)
-  const p = 1 + ascLvl * 0.1;
-  if (p !== 1) {
-    // Draw the induced PDF of u^p where u has linear-ramp dist
-    // f_Y(y) = f_X(y^(1/p)) * (1/p) * y^(1/p - 1)
-    const pts = [];
-    const N = 120;
-    let maxD = 0;
-    for (let i = 0; i <= N; i++) {
-      const y = i / N;
-      if (y <= 0) { pts.push(0); continue; }
-      const u = Math.pow(y, 1/p);
-      const fx = genPDF(u, slopeStep);
-      const fy = fx * (1/p) * Math.pow(y, 1/p - 1);
-      pts.push(isFinite(fy) ? fy : 0);
-      if (fy > maxD) maxD = fy;
-    }
-    // Normalize to fixed scale of 3 for display
-    const scale = Math.max(maxD, 0.5);
-    const yOf = d => ar.y + ar.h - (d / scale) * ar.h;
-
-    ctx.beginPath();
-    for (let i = 0; i <= N; i++) {
-      const x = uToX(i / N);
-      const y = yOf(pts[i]);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.lineTo(uToX(1), ar.y+ar.h);
-    ctx.lineTo(uToX(0), ar.y+ar.h);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(200,240,74,0.05)'; ctx.fill();
-
-    ctx.beginPath();
-    for (let i = 0; i <= N; i++) {
-      const x = uToX(i / N);
-      const y = yOf(pts[i]);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    ctx.stroke();
-  } else {
-    // Linear ramp — draw as straight line
-    const yL = dToY(genPDF(0, slopeStep)), yR = dToY(genPDF(1, slopeStep));
-    ctx.beginPath();
-    ctx.moveTo(uToX(0), yL); ctx.lineTo(uToX(1), yR);
-    ctx.lineTo(uToX(1), ar.y+ar.h); ctx.lineTo(uToX(0), ar.y+ar.h);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(200,240,74,0.05)'; ctx.fill();
-
-    ctx.beginPath();
-    ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    ctx.moveTo(uToX(0), yL); ctx.lineTo(uToX(1), yR);
-    ctx.stroke();
-  }
-
-  // Baseline
+  // Fill + curve
   ctx.beginPath();
-  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1;
-  ctx.moveTo(ar.x, ar.y+ar.h); ctx.lineTo(ar.x+ar.w, ar.y+ar.h);
-  ctx.stroke();
+  for (let i=0;i<=N;i++) { const x=uToX(i/N),y=yOf(pts[i]); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.lineTo(uToX(1),ar.y+ar.h); ctx.lineTo(uToX(0),ar.y+ar.h); ctx.closePath();
+  ctx.fillStyle=accentFill.replace('0.22','0.06'); ctx.fill();
+
+  ctx.beginPath();
+  for (let i=0;i<=N;i++) { const x=uToX(i/N),y=yOf(pts[i]); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.strokeStyle='#e8e8e8'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.stroke();
+
+  ctx.beginPath(); ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1;
+  ctx.moveTo(ar.x,ar.y+ar.h); ctx.lineTo(ar.x+ar.w,ar.y+ar.h); ctx.stroke();
 }
 
 // ══════════════════════════════════════════════════════
-//  DRAW — MULTIPLIER (generic)
+//  DRAW — MULTIPLIER
 // ══════════════════════════════════════════════════════
 
-const MULT_BINS = 100;
+const MULT_BINS=100;
 
 function drawMultCanvas(ctx, size, mult, hitBin, hitAlpha) {
-  const ar = chartArea(size);
-  ctx.clearRect(0, 0, size, size);
+  if (!ctx||!size) return;
+  const ar=chartArea(size); ctx.clearRect(0,0,size,size);
+  const vals=Array.from({length:MULT_BINS},(_,i)=>betaPDF((i+0.5)/MULT_BINS,mult.alpha,mult.beta));
+  const pdfMax=Math.max(...vals,1e-6);
+  const binToX=i=>ar.x+(i/MULT_BINS)*ar.w;
+  const dToY=d=>ar.y+ar.h-(d/pdfMax)*ar.h;
 
-  const vals = Array.from({length: MULT_BINS}, (_, i) => {
-    const u = (i+0.5)/MULT_BINS;
-    return betaPDF(u, mult.alpha, mult.beta);
-  });
-  const pdfMax = Math.max(...vals, 1e-6);
-
-  function binToX(i) { return ar.x + (i / MULT_BINS) * ar.w; }
-  function dToY(d)   { return ar.y + ar.h - (d/pdfMax) * ar.h; }
-
-  if (hitBin !== null && hitAlpha > 0) {
-    const x0 = binToX(hitBin), x1 = binToX(hitBin+1);
-    ctx.save();
-    ctx.globalAlpha = hitAlpha;
-    ctx.fillStyle = 'rgba(74,200,240,0.2)';
-    ctx.fillRect(x0, ar.y, x1-x0, ar.h);
-    const cx = binToX(hitBin+0.5);
-    ctx.strokeStyle = '#4ac8f0'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(cx, ar.y); ctx.lineTo(cx, ar.y+ar.h); ctx.stroke();
-    ctx.restore();
+  if (hitBin!==null&&hitAlpha>0) {
+    ctx.save(); ctx.globalAlpha=hitAlpha;
+    ctx.fillStyle='rgba(74,200,240,0.2)'; ctx.fillRect(binToX(hitBin),ar.y,binToX(hitBin+1)-binToX(hitBin),ar.h);
+    const cx=binToX(hitBin+0.5); ctx.strokeStyle='#4ac8f0'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(cx,ar.y); ctx.lineTo(cx,ar.y+ar.h); ctx.stroke(); ctx.restore();
   }
 
-  ctx.beginPath();
-  ctx.strokeStyle = '#c8e8f0'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-  for (let i = 0; i < MULT_BINS; i++) {
-    const x = binToX(i+0.5), y = dToY(vals[i]);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
+  ctx.beginPath(); ctx.strokeStyle='#c8e8f0'; ctx.lineWidth=2; ctx.lineJoin='round';
+  vals.forEach((v,i)=>{ const x=binToX(i+0.5),y=dToY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
   ctx.stroke();
 
   ctx.beginPath();
-  for (let i = 0; i < MULT_BINS; i++) {
-    const x = binToX(i+0.5), y = dToY(vals[i]);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.lineTo(binToX(MULT_BINS), ar.y+ar.h);
-  ctx.lineTo(binToX(0), ar.y+ar.h);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(74,200,240,0.05)'; ctx.fill();
+  vals.forEach((v,i)=>{ const x=binToX(i+0.5),y=dToY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(binToX(MULT_BINS),ar.y+ar.h); ctx.lineTo(binToX(0),ar.y+ar.h); ctx.closePath();
+  ctx.fillStyle='rgba(74,200,240,0.05)'; ctx.fill();
 
-  const midX = ar.x + ar.w/2;
-  ctx.beginPath();
-  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-  ctx.setLineDash([3,3]);
-  ctx.moveTo(midX, ar.y); ctx.lineTo(midX, ar.y+ar.h);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.beginPath();
-  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1;
-  ctx.moveTo(ar.x, ar.y+ar.h); ctx.lineTo(ar.x+ar.w, ar.y+ar.h);
-  ctx.stroke();
+  const midX=ar.x+ar.w/2;
+  ctx.beginPath(); ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.moveTo(midX,ar.y); ctx.lineTo(midX,ar.y+ar.h); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1;
+  ctx.moveTo(ar.x,ar.y+ar.h); ctx.lineTo(ar.x+ar.w,ar.y+ar.h); ctx.stroke();
 }
 
 // ══════════════════════════════════════════════════════
 //  CANVAS INSTANCES
 // ══════════════════════════════════════════════════════
 
-const gen1Canvas  = document.getElementById('gen-canvas');
-const mult1Canvas = document.getElementById('mult-canvas');
-const gen2Canvas  = document.getElementById('gen2-canvas');
-const mult2Canvas = document.getElementById('mult2-canvas');
+const genCanvasEls  = [null,'gen-canvas','gen2-canvas','gen3-canvas','gen4-canvas'].map((id,i)=>i?document.getElementById(id):null);
+const multCanvasEls = [null,'mult-canvas','mult2-canvas','mult3-canvas','mult4-canvas'].map((id,i)=>i?document.getElementById(id):null);
 
-let gen1Ctx, gen1Size, mult1Ctx, mult1Size;
-let gen2Ctx, gen2Size, mult2Ctx, mult2Size;
+const genCtx=[null,null,null,null,null], genSz=[null,null,null,null,null];
+const multCtx=[null,null,null,null,null], multSz=[null,null,null,null,null];
 
-function initAllCanvas() {
-  ({ ctx: gen1Ctx,  size: gen1Size  } = setupCanvas(gen1Canvas));
-  ({ ctx: mult1Ctx, size: mult1Size } = setupCanvas(mult1Canvas));
-  if (gen2Canvas.getBoundingClientRect().width > 0) {
-    ({ ctx: gen2Ctx,  size: gen2Size  } = setupCanvas(gen2Canvas));
-    ({ ctx: mult2Ctx, size: mult2Size } = setupCanvas(mult2Canvas));
-  }
-}
+function setupGenCanvas(n)  { if(!genCanvasEls[n]) return; const r=setupCanvas(genCanvasEls[n]); genCtx[n]=r.ctx; genSz[n]=r.size; }
+function setupMultCanvas(n) { if(!multCanvasEls[n]) return; const r=setupCanvas(multCanvasEls[n]); multCtx[n]=r.ctx; multSz[n]=r.size; }
 
-let gen1HitBin = null, gen1HitAlpha = 0;
-let mult1HitBin = null, mult1HitAlpha = 0;
-let gen2HitBin = null, gen2HitAlpha = 0;
-let mult2HitBin = null, mult2HitAlpha = 0;
+const GEN_ACCENT      = [null,'#c8f04a','#f07a4a','#b04af0','#f04a9a'];
+const GEN_ACCENT_FILL = [null,'rgba(200,240,74,0.22)','rgba(240,122,74,0.22)','rgba(176,74,240,0.22)','rgba(240,74,154,0.22)'];
 
-function drawGen1()  { drawGenCanvas(gen1Ctx, gen1Size, GEN1.slopeStep, GEN1.ascensionLevel, gen1HitBin, gen1HitAlpha, '#c8f04a', 'rgba(200,240,74,0.22)'); }
-function drawMult1() { if (MULT1.unlocked) drawMultCanvas(mult1Ctx, mult1Size, MULT1, mult1HitBin, mult1HitAlpha); }
-function drawGen2()  { if (gen2Ctx) drawGenCanvas(gen2Ctx, gen2Size, GEN2.slopeStep, GEN2.ascensionLevel, gen2HitBin, gen2HitAlpha, '#c8f04a', 'rgba(200,240,74,0.22)'); }
-function drawMult2() { if (MULT2.unlocked && mult2Ctx) drawMultCanvas(mult2Ctx, mult2Size, MULT2, mult2HitBin, mult2HitAlpha); }
+const genHitBin=[null,null,null,null,null], genHitAlpha=[null,0,0,0,0];
+const multHitBin=[null,null,null,null,null], multHitAlpha=[null,0,0,0,0];
+
+function drawGen(n)  { drawGenCanvas(genCtx[n],genSz[n],n,GENS[n],genHitBin[n],genHitAlpha[n],GEN_ACCENT[n],GEN_ACCENT_FILL[n]); }
+function drawMult(n) { if(MULTS[n].unlocked) drawMultCanvas(multCtx[n],multSz[n],MULTS[n],multHitBin[n],multHitAlpha[n]); }
 
 // ══════════════════════════════════════════════════════
 //  ROLL
 // ══════════════════════════════════════════════════════
 
-let roll1Timer = null, roll1Start = performance.now();
-let roll2Timer = null, roll2Start = performance.now();
+const rollTimers=[null,null,null,null,null];
+const rollStarts=[null,performance.now(),performance.now(),performance.now(),performance.now()];
 
-const GEN2_MULTIPLIER = 5;
+function idSfx(n) { return n>1?String(n):''; }
 
-function doRoll1() {
-  const raw = genRawSample(GEN1.slopeStep);
-  const genRoll = applyPower(raw, GEN1.ascensionLevel);
-  gen1HitBin   = Math.min(Math.floor(raw * BINS), BINS-1);
-  gen1HitAlpha = 1.0;
+function doRoll(n) {
+  const g=GENS[n]; if(!g.unlocked) return;
+  const t=slopeT(g.slopeStep);
+  const raw=GEN_SAMPLE_FNS[n](t);
+  const genRoll=applyPower(raw, g.ascensionLevel);
+  genHitBin[n]=Math.min(Math.floor(raw*BINS),BINS-1);
+  genHitAlpha[n]=1.0;
 
-  let multiplier = 1.0;
-  if (MULT1.unlocked) {
-    const mRoll = betaSample(MULT1.alpha, MULT1.beta);
-    multiplier   = mRoll * 2;
-    mult1HitBin  = Math.min(Math.floor(mRoll * MULT_BINS), MULT_BINS-1);
-    mult1HitAlpha = 1.0;
+  let multiplier=1.0;
+  const m=MULTS[n];
+  if (m.unlocked) {
+    const mRoll=betaSample(m.alpha,m.beta);
+    multiplier=mRoll*2;
+    multHitBin[n]=Math.min(Math.floor(mRoll*MULT_BINS),MULT_BINS-1);
+    multHitAlpha[n]=1.0;
   }
 
-  const earned = genRoll * multiplier;
-  score += earned;
+  const earned=genRoll*multiplier*GEN_CONFIG[n].multiplier;
+  score+=earned;
 
-  document.getElementById('stat-last').textContent = genRoll.toFixed(3);
-  if (MULT1.unlocked) document.getElementById('mult-last').textContent = multiplier.toFixed(3) + '×';
-
-  updateScore(); refreshUI();
-  roll1Start = performance.now();
-  document.getElementById('timer-bar').style.width = '0%';
-}
-
-function doRoll2() {
-  if (!GEN2.unlocked) return;
-  const raw = genRawSample(GEN2.slopeStep);
-  const genRoll = applyPower(raw, GEN2.ascensionLevel);
-  gen2HitBin   = Math.min(Math.floor(raw * BINS), BINS-1);
-  gen2HitAlpha = 1.0;
-
-  let multiplier = 1.0;
-  if (MULT2.unlocked) {
-    const mRoll = betaSample(MULT2.alpha, MULT2.beta);
-    multiplier   = mRoll * 2;
-    mult2HitBin  = Math.min(Math.floor(mRoll * MULT_BINS), MULT_BINS-1);
-    mult2HitAlpha = 1.0;
-  }
-
-  const earned = genRoll * multiplier * GEN2_MULTIPLIER;
-  score += earned;
-
-  document.getElementById('stat2-last').textContent = (genRoll * GEN2_MULTIPLIER).toFixed(3);
-  if (MULT2.unlocked) document.getElementById('mult2-last').textContent = multiplier.toFixed(3) + '×';
+  const sfx=idSfx(n);
+  const sl=document.getElementById(`stat${sfx}-last`); if(sl) sl.textContent=(genRoll*GEN_CONFIG[n].multiplier).toFixed(3);
+  const ml=document.getElementById(`mult${sfx}-last`); if(ml&&m.unlocked) ml.textContent=multiplier.toFixed(3)+'×';
 
   updateScore(); refreshUI();
-  roll2Start = performance.now();
-  document.getElementById('timer-bar2').style.width = '0%';
+  rollStarts[n]=performance.now();
+  const bar=document.getElementById(`timer-bar${sfx}`); if(bar) bar.style.width='0%';
 }
 
-function restartRoll1Timer() {
-  if (roll1Timer) clearInterval(roll1Timer);
-  roll1Timer = setInterval(doRoll1, GEN1.interval);
-  roll1Start = performance.now();
-}
-
-function restartRoll2Timer() {
-  if (roll2Timer) clearInterval(roll2Timer);
-  roll2Timer = setInterval(doRoll2, GEN2.interval);
-  roll2Start = performance.now();
+function restartRollTimer(n) {
+  if(rollTimers[n]) clearInterval(rollTimers[n]);
+  rollTimers[n]=setInterval(()=>doRoll(n),GENS[n].interval);
+  rollStarts[n]=performance.now();
 }
 
 // ══════════════════════════════════════════════════════
@@ -431,12 +406,10 @@ function restartRoll2Timer() {
 // ══════════════════════════════════════════════════════
 
 function updateScore() {
-  const el = document.getElementById('score-val');
-  el.textContent = score.toFixed(3);
-  el.classList.remove('bump');
-  void el.offsetWidth;
-  el.classList.add('bump');
-  setTimeout(() => el.classList.remove('bump'), 150);
+  const el=document.getElementById('score-val');
+  el.textContent=score.toFixed(3);
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  setTimeout(()=>el.classList.remove('bump'),150);
 }
 
 // ══════════════════════════════════════════════════════
@@ -444,282 +417,153 @@ function updateScore() {
 // ══════════════════════════════════════════════════════
 
 function refreshUI() {
-  // ── Gen 1 ──
-  const step1 = GEN1.slopeStep;
-  const asc1  = GEN1.ascensionLevel;
-  const ev1   = genEV(step1, asc1);
+  let totalEvPerSec=0;
 
-  document.getElementById('card-sub').textContent =
-    asc1 > 0
-      ? `slope ${step1}/${SLOPE_STEPS}  ^${(1+asc1*0.1).toFixed(1)}`
-      : `slope ${step1}/${SLOPE_STEPS}`;
-  document.getElementById('stat-ev').textContent       = ev1.toFixed(4);
-  document.getElementById('stat-interval').textContent = (GEN1.interval/1000).toFixed(2) + 's';
+  for (let n=1;n<=4;n++) {
+    const g=GENS[n], m=MULTS[n], cfg=GEN_CONFIG[n], sfx=idSfx(n);
 
-  const evWithMult1 = MULT1.unlocked ? ev1 * multEV(MULT1) : ev1;
-  document.getElementById('per-roll-val').textContent  = '~' + evWithMult1.toFixed(3);
-
-  // Slope 1
-  const slopeMaxed1 = step1 >= SLOPE_STEPS;
-  document.getElementById('upg-slope').classList.toggle('maxed', slopeMaxed1);
-  const btnSlope = document.getElementById('btn-slope');
-  if (slopeMaxed1) {
-    btnSlope.disabled = true;
-    document.getElementById('cost-slope').textContent     = 'DONE';
-    document.getElementById('upg-slope-step').textContent = 'maxed';
-  } else {
-    const c = slopeCost(step1);
-    btnSlope.disabled = score < c;
-    document.getElementById('cost-slope').textContent     = c.toFixed(2);
-    document.getElementById('upg-slope-step').textContent = `${step1} → ${step1+1}`;
-  }
-
-  const fill1 = document.getElementById('slope-progress-fill');
-  if (fill1) fill1.style.width = (step1 / SLOPE_STEPS * 100) + '%';
-
-  // Speed 1
-  const speedMaxed1 = GEN1.interval <= 500;
-  document.getElementById('upg-speed').classList.toggle('maxed', speedMaxed1);
-  const btnSpeed = document.getElementById('btn-speed');
-  const sc1 = speedCost(GEN1.speedCount);
-  btnSpeed.disabled = speedMaxed1 || score < sc1;
-  document.getElementById('cost-speed').textContent     = speedMaxed1 ? 'MAX' : sc1.toFixed(2);
-  document.getElementById('upg-speed-step').textContent =
-    speedMaxed1 ? '' : `→ ${(GEN1.interval*0.95/1000).toFixed(2)}s`;
-
-  // Ascension 1
-  document.getElementById('ascension-wrap').classList.toggle('hidden', !slopeMaxed1);
-
-  // Mult 1 unlock
-  const btnUnlock1 = document.getElementById('btn-unlock-mult');
-  btnUnlock1.disabled = score < MULT1_UNLOCK_COST;
-  if (MULT1.unlocked) {
-    document.getElementById('mult-sub').textContent   = `α=${MULT1.alpha.toFixed(1)}, β=2`;
-    document.getElementById('mult-alpha').textContent = MULT1.alpha.toFixed(1);
-    document.getElementById('mult-ev').textContent    = multEV(MULT1).toFixed(3) + '×';
-    const mac1 = mult1AlphaCost(MULT1.alphaCount);
-    const btnMA1 = document.getElementById('btn-mult-alpha');
-    btnMA1.disabled = score < mac1;
-    document.getElementById('cost-mult-alpha').textContent     = mac1.toFixed(2);
-    document.getElementById('upg-mult-alpha-step').textContent =
-      `α ${MULT1.alpha.toFixed(1)} → ${(MULT1.alpha+0.1).toFixed(1)}`;
-  }
-
-  // ── Gen 2 visibility ──
-  if (GEN2.unlocked) {
-
-    const step2 = GEN2.slopeStep;
-    const asc2  = GEN2.ascensionLevel;
-    const ev2   = genEV(step2, asc2) * GEN2_MULTIPLIER;
-
-    document.getElementById('card2-sub').textContent =
-      asc2 > 0
-        ? `slope ${step2}/${SLOPE_STEPS}  ^${(1+asc2*0.1).toFixed(1)}`
-        : `slope ${step2}/${SLOPE_STEPS}`;
-    document.getElementById('stat2-ev').textContent       = ev2.toFixed(4);
-    document.getElementById('stat2-interval').textContent = (GEN2.interval/1000).toFixed(2) + 's';
-
-    // Slope 2
-    const slopeMaxed2 = step2 >= SLOPE_STEPS;
-    document.getElementById('upg-slope2').classList.toggle('maxed', slopeMaxed2);
-    const btnSlope2 = document.getElementById('btn-slope2');
-    if (slopeMaxed2) {
-      btnSlope2.disabled = true;
-      document.getElementById('cost-slope2').textContent     = 'DONE';
-      document.getElementById('upg-slope2-step').textContent = 'maxed';
-    } else {
-      const c2 = slope2Cost(step2);
-      btnSlope2.disabled = score < c2;
-      document.getElementById('cost-slope2').textContent     = c2.toFixed(2);
-      document.getElementById('upg-slope2-step').textContent = `${step2} → ${step2+1}`;
+    if (!g.unlocked) {
+      const btn=document.getElementById(`btn-unlock-gen${n}`);
+      if(btn) btn.disabled=score<cfg.gen_unlockCost;
+      continue;
     }
 
-    const fill2 = document.getElementById('slope2-progress-fill');
-    if (fill2) fill2.style.width = (step2 / SLOPE_STEPS * 100) + '%';
+    const ev=genEV(n,g)*cfg.multiplier;
+    const evWithMult=m.unlocked?ev*multEV(m):ev;
+    totalEvPerSec+=evWithMult/(g.interval/1000);
 
-    // Speed 2
-    const speedMaxed2 = GEN2.interval <= 1500;  // 3× Gen1 min
-    document.getElementById('upg-speed2').classList.toggle('maxed', speedMaxed2);
-    const btnSpeed2 = document.getElementById('btn-speed2');
-    const sc2 = speed2Cost(GEN2.speedCount);
-    btnSpeed2.disabled = speedMaxed2 || score < sc2;
-    document.getElementById('cost-speed2').textContent     = speedMaxed2 ? 'MAX' : sc2.toFixed(2);
-    document.getElementById('upg-speed2-step').textContent =
-      speedMaxed2 ? '' : `→ ${(GEN2.interval*0.95/1000).toFixed(2)}s`;
+    const cardSub=document.getElementById(`card${sfx}-sub`);
+    if(cardSub) cardSub.textContent=g.ascensionLevel>0
+      ?`slope ${g.slopeStep}/${SLOPE_STEPS}  ^${(1+g.ascensionLevel*0.1).toFixed(1)}`
+      :`slope ${g.slopeStep}/${SLOPE_STEPS}`;
+    const sev=document.getElementById(`stat${sfx}-ev`); if(sev) sev.textContent=ev.toFixed(4);
+    const sivl=document.getElementById(`stat${sfx}-interval`); if(sivl) sivl.textContent=(g.interval/1000).toFixed(2)+'s';
 
-    // Ascension 2
-    document.getElementById('ascension2-wrap').classList.toggle('hidden', !slopeMaxed2);
-
-    // Mult 2
-    const btnUnlock2 = document.getElementById('btn-unlock-mult2');
-    btnUnlock2.disabled = score < MULT2_UNLOCK_COST;
-    if (MULT2.unlocked) {
-      document.getElementById('mult2-sub').textContent   = `α=${MULT2.alpha.toFixed(1)}, β=2`;
-      document.getElementById('mult2-alpha').textContent = MULT2.alpha.toFixed(1);
-      document.getElementById('mult2-ev').textContent    = multEV(MULT2).toFixed(3) + '×';
-      const mac2 = mult2AlphaCost(MULT2.alphaCount);
-      const btnMA2 = document.getElementById('btn-mult-alpha2');
-      btnMA2.disabled = score < mac2;
-      document.getElementById('cost-mult-alpha2').textContent     = mac2.toFixed(2);
-      document.getElementById('upg-mult-alpha2-step').textContent =
-        `α ${MULT2.alpha.toFixed(1)} → ${(MULT2.alpha+0.1).toFixed(1)}`;
+    // Slope
+    const slopeMaxed=g.slopeStep>=SLOPE_STEPS;
+    const upgS=document.getElementById(`upg-slope${sfx}`); if(upgS) upgS.classList.toggle('maxed',slopeMaxed);
+    const btnSlope=document.getElementById(`btn-slope${sfx}`);
+    if(btnSlope) {
+      if(slopeMaxed) {
+        btnSlope.disabled=true;
+        document.getElementById(`cost-slope${sfx}`).textContent='DONE';
+        document.getElementById(`upg-slope${sfx}-step`).textContent='maxed';
+      } else {
+        const c=slopeCost(n,g.slopeStep); btnSlope.disabled=score<c;
+        document.getElementById(`cost-slope${sfx}`).textContent=c.toFixed(2);
+        document.getElementById(`upg-slope${sfx}-step`).textContent=`${g.slopeStep} → ${g.slopeStep+1}`;
+      }
     }
-  } else {
-    // Show unlock button cost state
-    const btnUnlock2 = document.getElementById('btn-unlock-gen2');
-    if (btnUnlock2) btnUnlock2.disabled = score < GEN2_UNLOCK_COST;
+    const fill=document.getElementById(`slope${sfx}-progress-fill`); if(fill) fill.style.width=(g.slopeStep/SLOPE_STEPS*100)+'%';
+
+    // Speed
+    const speedMaxed=g.interval<=cfg.minInterval;
+    const upgSp=document.getElementById(`upg-speed${sfx}`); if(upgSp) upgSp.classList.toggle('maxed',speedMaxed);
+    const btnSpeed=document.getElementById(`btn-speed${sfx}`);
+    if(btnSpeed) {
+      const sc=speedCost(n,g.speedCount); btnSpeed.disabled=speedMaxed||score<sc;
+      document.getElementById(`cost-speed${sfx}`).textContent=speedMaxed?'MAX':sc.toFixed(2);
+      document.getElementById(`upg-speed${sfx}-step`).textContent=speedMaxed?'':`→ ${(g.interval*0.95/1000).toFixed(2)}s`;
+    }
+
+    // Ascension
+    const ascWrap=document.getElementById(`ascension${sfx}-wrap`); if(ascWrap) ascWrap.classList.toggle('hidden',!slopeMaxed);
+
+    // Mult unlock
+    const btnUM=document.getElementById(`btn-unlock-mult${sfx}`); if(btnUM) btnUM.disabled=score<cfg.mult_unlockCost;
+
+    if(m.unlocked) {
+      const ms=document.getElementById(`mult${sfx}-sub`); if(ms) ms.textContent=`α=${m.alpha.toFixed(1)}, β=2`;
+      const ma=document.getElementById(`mult${sfx}-alpha`); if(ma) ma.textContent=m.alpha.toFixed(1);
+      const mev=document.getElementById(`mult${sfx}-ev`); if(mev) mev.textContent=multEV(m).toFixed(3)+'×';
+      const mac=multAlphaCost(n,m.alphaCount);
+      const btnMA=document.getElementById(`btn-mult-alpha${sfx}`); if(btnMA) btnMA.disabled=score<mac;
+      const cMA=document.getElementById(`cost-mult-alpha${sfx}`); if(cMA) cMA.textContent=mac.toFixed(2);
+      const stMA=document.getElementById(`upg-mult-alpha${sfx}-step`); if(stMA) stMA.textContent=`α ${m.alpha.toFixed(1)} → ${(m.alpha+0.1).toFixed(1)}`;
+    }
   }
+
+  document.getElementById('per-roll-val').textContent='~'+totalEvPerSec.toFixed(3)+'/s';
 }
 
 // ══════════════════════════════════════════════════════
 //  BUTTON WIRING
 // ══════════════════════════════════════════════════════
 
-// Gen 1 slope
-document.getElementById('btn-slope').addEventListener('click', () => {
-  if (GEN1.slopeStep >= SLOPE_STEPS) return;
-  const cost = slopeCost(GEN1.slopeStep);
-  if (score < cost) return;
-  score -= cost; GEN1.slopeStep++;
-  updateScore(); refreshUI(); drawGen1();
-});
+function wireButtons(n) {
+  const sfx=idSfx(n), cfg=GEN_CONFIG[n];
 
-// Gen 1 speed
-document.getElementById('btn-speed').addEventListener('click', () => {
-  if (GEN1.interval <= 500) return;
-  const cost = speedCost(GEN1.speedCount);
-  if (score < cost) return;
-  score -= cost; GEN1.speedCount++;
-  GEN1.interval = Math.max(500, Math.round(GEN1.interval * 0.95));
-  restartRoll1Timer();
-  updateScore(); refreshUI();
-});
-
-// Gen 1 ascend
-document.getElementById('btn-ascend').addEventListener('click', () => {
-  if (GEN1.slopeStep < SLOPE_STEPS) return;
-  GEN1.slopeStep = 0;
-  GEN1.ascensionLevel++;
-  // Flash the card to signal ascension
-  const card = document.querySelector('.gen-card');
-  card.style.transition = 'box-shadow 0.2s';
-  card.style.boxShadow = '0 0 16px 4px rgba(240,200,74,0.5)';
-  setTimeout(() => { card.style.boxShadow = ''; }, 600);
-  updateScore(); refreshUI(); drawGen1();
-});
-
-// Mult 1 unlock
-document.getElementById('btn-unlock-mult').addEventListener('click', () => {
-  if (score < MULT1_UNLOCK_COST) return;
-  score -= MULT1_UNLOCK_COST;
-  MULT1.unlocked = true;
-  document.getElementById('lock-overlay').classList.add('hidden');
-  document.getElementById('mult-upgrades').classList.remove('hidden');
-  document.getElementById('mult-sub').textContent = `α=${MULT1.alpha.toFixed(1)}, β=2`;
-  updateScore(); refreshUI(); drawMult1();
-});
-
-// Mult 1 alpha upgrade
-document.getElementById('btn-mult-alpha').addEventListener('click', () => {
-  if (!MULT1.unlocked) return;
-  const cost = mult1AlphaCost(MULT1.alphaCount);
-  if (score < cost) return;
-  score -= cost; MULT1.alphaCount++;
-  MULT1.alpha = Math.round((MULT1.alpha + 0.1) * 10) / 10;
-  updateScore(); refreshUI(); drawMult1();
-});
-
-// Gen 2 unlock
-document.getElementById('btn-unlock-gen2').addEventListener('click', () => {
-  if (score < GEN2_UNLOCK_COST) return;
-  score -= GEN2_UNLOCK_COST;
-  GEN2.unlocked = true;
-  document.getElementById('gen2-lock-panel').classList.add('hidden');
-  document.getElementById('gen2-card').classList.remove('hidden');
-  document.getElementById('mult2-card').classList.remove('hidden');
-  document.getElementById('upgrades2-panel').classList.remove('hidden');
-  // Init canvases now that they're visible
-  ({ ctx: gen2Ctx,  size: gen2Size  } = setupCanvas(gen2Canvas));
-  ({ ctx: mult2Ctx, size: mult2Size } = setupCanvas(mult2Canvas));
-  restartRoll2Timer();
-  updateScore(); refreshUI(); drawGen2();
-});
-
-// Gen 2 slope
-document.getElementById('btn-slope2').addEventListener('click', () => {
-  if (GEN2.slopeStep >= SLOPE_STEPS) return;
-  const cost = slope2Cost(GEN2.slopeStep);
-  if (score < cost) return;
-  score -= cost; GEN2.slopeStep++;
-  updateScore(); refreshUI(); drawGen2();
-});
-
-// Gen 2 speed
-document.getElementById('btn-speed2').addEventListener('click', () => {
-  if (GEN2.interval <= 1500) return;
-  const cost = speed2Cost(GEN2.speedCount);
-  if (score < cost) return;
-  score -= cost; GEN2.speedCount++;
-  GEN2.interval = Math.max(1500, Math.round(GEN2.interval * 0.95));
-  restartRoll2Timer();
-  updateScore(); refreshUI();
-});
-
-// Gen 2 ascend
-document.getElementById('btn-ascend2').addEventListener('click', () => {
-  if (GEN2.slopeStep < SLOPE_STEPS) return;
-  GEN2.slopeStep = 0;
-  GEN2.ascensionLevel++;
-  const cards = document.querySelectorAll('.gen-card');
-  const card2 = cards[2]; // third card is gen2
-  if (card2) {
-    card2.style.transition = 'box-shadow 0.2s';
-    card2.style.boxShadow = '0 0 16px 4px rgba(240,200,74,0.5)';
-    setTimeout(() => { card2.style.boxShadow = ''; }, 600);
+  if(n>1) {
+    const btn=document.getElementById(`btn-unlock-gen${n}`);
+    if(btn) btn.addEventListener('click',()=>{
+      if(score<cfg.gen_unlockCost) return;
+      score-=cfg.gen_unlockCost; GENS[n].unlocked=true;
+      document.getElementById(`gen${n}-lock-panel`).classList.add('hidden');
+      document.getElementById(`gen${n}-card`).classList.remove('hidden');
+      document.getElementById(`mult${n}-card`).classList.remove('hidden');
+      document.getElementById(`upgrades${n}-panel`).classList.remove('hidden');
+      setupGenCanvas(n); setupMultCanvas(n);
+      restartRollTimer(n); updateScore(); refreshUI(); drawGen(n);
+    });
   }
-  updateScore(); refreshUI(); drawGen2();
-});
 
-// Mult 2 unlock
-document.getElementById('btn-unlock-mult2').addEventListener('click', () => {
-  if (score < MULT2_UNLOCK_COST) return;
-  score -= MULT2_UNLOCK_COST;
-  MULT2.unlocked = true;
-  document.getElementById('lock-overlay2').classList.add('hidden');
-  document.getElementById('mult2-upgrades').classList.remove('hidden');
-  document.getElementById('mult2-sub').textContent = `α=${MULT2.alpha.toFixed(1)}, β=2`;
-  updateScore(); refreshUI(); drawMult2();
-});
+  const btnSlope=document.getElementById(`btn-slope${sfx}`);
+  if(btnSlope) btnSlope.addEventListener('click',()=>{
+    const g=GENS[n]; if(g.slopeStep>=SLOPE_STEPS) return;
+    const cost=slopeCost(n,g.slopeStep); if(score<cost) return;
+    score-=cost; g.slopeStep++; updateScore(); refreshUI(); drawGen(n);
+  });
 
-// Mult 2 alpha upgrade
-document.getElementById('btn-mult-alpha2').addEventListener('click', () => {
-  if (!MULT2.unlocked) return;
-  const cost = mult2AlphaCost(MULT2.alphaCount);
-  if (score < cost) return;
-  score -= cost; MULT2.alphaCount++;
-  MULT2.alpha = Math.round((MULT2.alpha + 0.1) * 10) / 10;
-  updateScore(); refreshUI(); drawMult2();
-});
+  const btnSpeed=document.getElementById(`btn-speed${sfx}`);
+  if(btnSpeed) btnSpeed.addEventListener('click',()=>{
+    const g=GENS[n]; if(g.interval<=cfg.minInterval) return;
+    const cost=speedCost(n,g.speedCount); if(score<cost) return;
+    score-=cost; g.speedCount++;
+    g.interval=Math.max(cfg.minInterval,Math.round(g.interval*0.95));
+    restartRollTimer(n); updateScore(); refreshUI();
+  });
+
+  const btnAscend=document.getElementById(`btn-ascend${sfx}`);
+  if(btnAscend) btnAscend.addEventListener('click',()=>{
+    const g=GENS[n]; if(g.slopeStep<SLOPE_STEPS) return;
+    g.slopeStep=0; g.ascensionLevel++;
+    updateScore(); refreshUI(); drawGen(n);
+  });
+
+  const btnUM=document.getElementById(`btn-unlock-mult${sfx}`);
+  if(btnUM) btnUM.addEventListener('click',()=>{
+    const m=MULTS[n]; if(score<cfg.mult_unlockCost) return;
+    score-=cfg.mult_unlockCost; m.unlocked=true;
+    document.getElementById(`lock-overlay${sfx}`).classList.add('hidden');
+    document.getElementById(`mult${sfx}-upgrades`).classList.remove('hidden');
+    document.getElementById(`mult${sfx}-sub`).textContent=`α=${m.alpha.toFixed(1)}, β=2`;
+    updateScore(); refreshUI(); drawMult(n);
+  });
+
+  const btnMA=document.getElementById(`btn-mult-alpha${sfx}`);
+  if(btnMA) btnMA.addEventListener('click',()=>{
+    const m=MULTS[n]; if(!m.unlocked) return;
+    const cost=multAlphaCost(n,m.alphaCount); if(score<cost) return;
+    score-=cost; m.alphaCount++; m.alpha=Math.round((m.alpha+0.1)*10)/10;
+    updateScore(); refreshUI(); drawMult(n);
+  });
+}
+
+for(let n=1;n<=4;n++) wireButtons(n);
 
 // ══════════════════════════════════════════════════════
 //  ANIMATION LOOP
 // ══════════════════════════════════════════════════════
 
 function animLoop(ts) {
-  // Timer bars
-  document.getElementById('timer-bar').style.width =
-    Math.min((ts - roll1Start) / GEN1.interval * 100, 100) + '%';
-  if (GEN2.unlocked) {
-    document.getElementById('timer-bar2').style.width =
-      Math.min((ts - roll2Start) / GEN2.interval * 100, 100) + '%';
+  for(let n=1;n<=4;n++) {
+    if(!GENS[n].unlocked) continue;
+    const sfx=idSfx(n);
+    const bar=document.getElementById(`timer-bar${sfx}`);
+    if(bar) bar.style.width=Math.min((ts-rollStarts[n])/GENS[n].interval*100,100)+'%';
+    if(genHitAlpha[n]>0)  { genHitAlpha[n]=Math.max(0,genHitAlpha[n]-0.012); drawGen(n); }
+    if(multHitAlpha[n]>0) { multHitAlpha[n]=Math.max(0,multHitAlpha[n]-0.012); drawMult(n); }
   }
-
-  // Fade hit highlights
-  if (gen1HitAlpha > 0)  { gen1HitAlpha  = Math.max(0, gen1HitAlpha  - 0.012); drawGen1(); }
-  if (mult1HitAlpha > 0) { mult1HitAlpha = Math.max(0, mult1HitAlpha - 0.012); drawMult1(); }
-  if (gen2HitAlpha > 0)  { gen2HitAlpha  = Math.max(0, gen2HitAlpha  - 0.012); drawGen2(); }
-  if (mult2HitAlpha > 0) { mult2HitAlpha = Math.max(0, mult2HitAlpha - 0.012); drawMult2(); }
-
   requestAnimationFrame(animLoop);
 }
 
@@ -727,39 +571,29 @@ function animLoop(ts) {
 //  INIT
 // ══════════════════════════════════════════════════════
 
-// Inject slope progress bars
-(function() {
-  const row1 = document.getElementById('upg-slope');
-  const bar1 = document.createElement('div');
-  bar1.className = 'slope-progress';
-  bar1.innerHTML = '<div class="slope-progress-fill" id="slope-progress-fill"></div>';
-  row1.after(bar1);
-
-  const row2 = document.getElementById('upg-slope2');
-  if (row2) {
-    const bar2 = document.createElement('div');
-    bar2.className = 'slope-progress';
-    bar2.innerHTML = '<div class="slope-progress-fill" id="slope2-progress-fill"></div>';
-    row2.after(bar2);
+(function injectProgressBars() {
+  for(let n=1;n<=4;n++) {
+    const sfx=idSfx(n), row=document.getElementById(`upg-slope${sfx}`);
+    if(row) {
+      const bar=document.createElement('div');
+      bar.className='slope-progress';
+      bar.innerHTML=`<div class="slope-progress-fill" id="slope${sfx}-progress-fill"></div>`;
+      row.after(bar);
+    }
   }
 })();
 
 function init() {
-  initAllCanvas();
-  refreshUI();
-  drawGen1();
+  setupGenCanvas(1); setupMultCanvas(1);
+  refreshUI(); drawGen(1);
   requestAnimationFrame(animLoop);
-  restartRoll1Timer();
+  restartRollTimer(1);
 }
 
-window.addEventListener('resize', () => {
-  ({ ctx: gen1Ctx,  size: gen1Size  } = setupCanvas(gen1Canvas));
-  ({ ctx: mult1Ctx, size: mult1Size } = setupCanvas(mult1Canvas));
-  drawGen1(); drawMult1();
-  if (GEN2.unlocked) {
-    ({ ctx: gen2Ctx, size: gen2Size } = setupCanvas(gen2Canvas));
-    ({ ctx: mult2Ctx, size: mult2Size } = setupCanvas(mult2Canvas));
-    drawGen2(); drawMult2();
+window.addEventListener('resize',()=>{
+  for(let n=1;n<=4;n++) {
+    if(!GENS[n].unlocked) continue;
+    setupGenCanvas(n); setupMultCanvas(n); drawGen(n); drawMult(n);
   }
 });
 

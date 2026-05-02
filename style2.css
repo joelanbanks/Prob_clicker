@@ -1,0 +1,69 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  padding: 12px 20px;
+}
+
+main {
+  display: flex;
+  flex-direction: column; /* stack rows vertically */
+  gap: 12px;
+  padding: 20px;
+}
+
+.col {
+  height: 400px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+#gen-column {
+  width: 400px;
+  height: 150px;
+}
+
+#upgrade-column {
+  width: 400px;
+  height: 150px;
+}
+
+#gen-column {
+  width: auto;
+  height: auto; /* remove fixed height so it grows */
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* margin between generators */
+}
+
+.upg-btn {
+  height: 150px;  /* match .gen height */
+  width: 400px;
+}
+
+.gen-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 150px;  /* keeps row height even when .gen is hidden */
+}
+
+.gen {
+  width: 400px;
+  height: 150px;
+  flex-shrink: 0;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;   /* top */
+  justify-content: flex-start; /* left */
+}
+
+.card-header {
+  padding: 8px;
+  align-self: flex-start;  /* pins it to the top of the flex .gen container */
+}
