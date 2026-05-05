@@ -40,15 +40,15 @@ main {
 }
 
 .upg-btn {
-  height: 150px;  /* match .gen height */
   width: 400px;
+  flex: 1; /* each button takes equal share of the column height */
 }
 
 .gen-row {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* children grow to match row height */
   gap: 24px;
-  min-height: 150px;  /* keeps row height even when .gen is hidden */
+  min-height: 150px;
 }
 
 .gen {
@@ -61,9 +61,64 @@ main {
   display: flex;
   align-items: flex-start;   /* top */
   justify-content: flex-start; /* left */
+  position: relative;
+}
+
+.gen-progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.gen-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #4caf50;
+  transition: width 0.1s linear;
 }
 
 .card-header {
   padding: 8px;
-  align-self: flex-start;  /* pins it to the top of the flex .gen container */
+  align-self: flex-start;
+  width: 100%;                        /* add this */
+  display: flex;                      /* add this */
+  justify-content: space-between;     /* add this */
+  align-items: flex-start;            /* add this */
+  box-sizing: border-box;             /* add this */
+}
+
+.upg-btn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0; /* small vertical padding so buttons don't touch row edges */
+}
+
+.gen-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.unlock-btn {
+  width: 400px;
+  height: 150px;
+  align-self: flex-start;
+}
+
+.card-footer {
+  position: absolute;
+  bottom: 12px; /* sits just above the 8px progress bar */
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  box-sizing: border-box;
 }

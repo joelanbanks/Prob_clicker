@@ -18,52 +18,107 @@
   <main>
 
     <div class="gen-row" id="row-gen-1">
-      <div class="gen" id="gen-1">
-        <div class="card-header">
-          <span class="card-title">Generator 1</span>
-          <span class="card-sub" id="gen-1-level">Level 0/10</span>
-        </div>
-      </div>
-      <button class="upg-btn" id="upg-gen1-slope"></button>
-    </div>
+        <div class="gen-col">
+            <div class="gen" id="gen-1">
+            <div class="card-header">
+                <span class="card-title">Generator 1</span>
+                <span class="card-sub card-level" id="gen-1-level">Level 0/10</span>
+            </div>
 
-    <div class="gen-row" id="row-gen-2">
-      <div class="gen" id="gen-2" style="display:none">
-        <div class="card-header">
-          <span class="card-title">Generator 2</span>
-          <span class="card-sub" id="gen-2-level">Level 0/10</span>
-        </div>
-      </div>
-      <button class="upg-btn" id="upg-gen2-slope" style="display:none"></button>
-      <button class="upg-btn unlock-btn" id="upg-gen2-unlock">Unlock Gen 2 — cost: 10</button>
-    </div>
+            <div class="card-footer" id="gen-1-footer">
+                <span class="card-sub" id="gen-1-ev">EV: —</span>
+                <span class="card-sub" id="gen-1-tickspeed">Tickspeed: —</span>
+            </div>
 
-    <div class="gen-row" id="row-gen-3">
-      <div class="gen" id="gen-3" style="display:none">
-        <div class="card-header">
-          <span class="card-title">Generator 3</span>
-          <span class="card-sub" id="gen-3-level">Level 0/10</span>
+            <div class="gen-progress-bar-container">
+                <div class="gen-progress-bar" id="gen-1-progress"></div>
+            </div>
+            </div>
         </div>
-      </div>
-      <button class="upg-btn" id="upg-gen3-slope" style="display:none"></button>
-      <button class="upg-btn unlock-btn" id="upg-gen3-unlock" style="display:none">Unlock Gen 3 — cost: 100</button>
-    </div>
+        <div class="upg-btn-col">
+            <button class="upg-btn" id="upg-gen1-slope"></button>
+            <button class="upg-btn" id="upg-gen1-speed"></button>
+        </div>
+        </div>
 
-    <div class="gen-row" id="row-gen-4">
-      <div class="gen" id="gen-4" style="display:none">
-        <div class="card-header">
-          <span class="card-title">Generator 4</span>
-          <span class="card-sub" id="gen-4-level">Level 0/10</span>
+        <div class="gen-row" id="row-gen-2">
+        <div class="gen-col">
+            <div class="gen" id="gen-2" style="display:none">
+            <div class="card-header">
+                <span class="card-title">Generator 2</span>
+                <span class="card-sub card-level" id="gen-2-level">Level 0/10</span>
+            </div>
+
+            <div class="card-footer" id="gen-2-footer">
+                <span class="card-sub" id="gen-2-ev">EV: —</span>
+                <span class="card-sub" id="gen-2-tickspeed">Tickspeed: —</span>
+            </div>
+
+            <div class="gen-progress-bar-container">
+                <div class="gen-progress-bar" id="gen-2-progress"></div>
+            </div>
+            </div>
+            <button class="upg-btn unlock-btn" id="upg-gen2-unlock">Unlock Gen 2 — cost: 10</button>
         </div>
-      </div>
-      <button class="upg-btn" id="upg-gen4-slope" style="display:none"></button>
-      <button class="upg-btn unlock-btn" id="upg-gen4-unlock" style="display:none">Unlock Gen 4 — cost: 1000</button>
-    </div>
+        <div class="upg-btn-col">
+            <button class="upg-btn" id="upg-gen2-slope" style="display:none"></button>
+            <button class="upg-btn" id="upg-gen2-speed" style="display:none"></button>
+        </div>
+        </div>
+
+        <div class="gen-row" id="row-gen-3">
+        <div class="gen-col">
+            <div class="gen" id="gen-3" style="display:none">
+            <div class="card-header">
+                <span class="card-title">Generator 3</span>
+                <span class="card-sub card-level" id="gen-3-level">Level 0/10</span>
+            </div>
+
+            <div class="card-footer" id="gen-3-footer">
+                <span class="card-sub" id="gen-3-ev">EV: —</span>
+                <span class="card-sub" id="gen-3-tickspeed">Tickspeed: —</span>
+            </div>
+
+            <div class="gen-progress-bar-container">
+                <div class="gen-progress-bar" id="gen-3-progress"></div>
+            </div>
+            </div>
+            <button class="upg-btn unlock-btn" id="upg-gen3-unlock" style="display:none">Unlock Gen 3 — cost: 100</button>
+        </div>
+        <div class="upg-btn-col">
+            <button class="upg-btn" id="upg-gen3-slope" style="display:none"></button>
+            <button class="upg-btn" id="upg-gen3-speed" style="display:none"></button>
+        </div>
+        </div>
+
+        <div class="gen-row" id="row-gen-4">
+        <div class="gen-col">
+            <div class="gen" id="gen-4" style="display:none">
+            <div class="card-header">
+                <span class="card-title">Generator 4</span>
+                <span class="card-sub card-level" id="gen-4-level">Level 0/10</span>
+            </div>
+
+            <div class="card-footer" id="gen-4-footer">
+                <span class="card-sub" id="gen-4-ev">EV: —</span>
+                <span class="card-sub" id="gen-4-tickspeed">Tickspeed: —</span>
+            </div>
+
+            <div class="gen-progress-bar-container">
+                <div class="gen-progress-bar" id="gen-4-progress"></div>
+            </div>
+            </div>
+            <button class="upg-btn unlock-btn" id="upg-gen4-unlock" style="display:none">Unlock Gen 4 — cost: 1000</button>
+        </div>
+        <div class="upg-btn-col">
+            <button class="upg-btn" id="upg-gen4-slope" style="display:none"></button>
+            <button class="upg-btn" id="upg-gen4-speed" style="display:none"></button>
+        </div>
+        </div>
 
   </main>
-
+  <script src="game2.js"></script>
   <script src="generators.js"></script>
   <script src="upgrades.js"></script>
-  <script src="game2.js"></script>
 </body>
 </html>
