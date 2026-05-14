@@ -41,26 +41,38 @@ function gen2PDF(x, n) { return genPDF(x, n, 3); }
 function gen3PDF(x, n) { return genPDF(x, n, 4); }
 function gen4PDF(x, n) { return genPDF(x, n, 5); }
 
-function updateGen1Footer(n, tickspeed) {
+function updateGen1Footer(n, tickspeed, mult) {
   const ev = genEV(n, 2);
+  const evPerSec = (ev * mult) / tickspeed;
   document.getElementById('gen-1-ev').textContent = `EV: ${fmt_num(ev)}`;
   document.getElementById('gen-1-tickspeed').textContent = `Tick: ${fmt_num(tickspeed)}s`;
+  document.getElementById('gen-1-mult').textContent = `Mult: x${fmt_num(mult)}`;
+  document.getElementById('gen-1-ev-per-sec').textContent = `EV/s: ${fmt_num(evPerSec)}`;
 }
 
-function updateGen2Footer(n, tickspeed) {
+function updateGen2Footer(n, tickspeed, mult) {
   const ev = genEV(n, 3);
+  const evPerSec = (ev * mult) / tickspeed;
   document.getElementById('gen-2-ev').textContent = `EV: ${fmt_num(ev)}`;
   document.getElementById('gen-2-tickspeed').textContent = `Tick: ${fmt_num(tickspeed)}s`;
+  document.getElementById('gen-2-mult').textContent = `Mult: x${fmt_num(mult)}`;
+  document.getElementById('gen-2-ev-per-sec').textContent = `EV/s: ${fmt_num(evPerSec)}`;
 }
 
-function updateGen3Footer(n, tickspeed) {
+function updateGen3Footer(n, tickspeed, mult) {
   const ev = genEV(n, 4);
+  const evPerSec = (ev * mult) / tickspeed;
   document.getElementById('gen-3-ev').textContent = `EV: ${fmt_num(ev)}`;
   document.getElementById('gen-3-tickspeed').textContent = `Tick: ${fmt_num(tickspeed)}s`;
+  document.getElementById('gen-3-mult').textContent = `Mult: x${fmt_num(mult)}`;
+  document.getElementById('gen-3-ev-per-sec').textContent = `EV/s: ${fmt_num(evPerSec)}`;
 }
 
-function updateGen4Footer(n, tickspeed) {
+function updateGen4Footer(n, tickspeed, mult) {
   const ev = genEV(n, 5);
+  const evPerSec = (ev * mult) / tickspeed;
   document.getElementById('gen-4-ev').textContent = `EV: ${fmt_num(ev)}`;
   document.getElementById('gen-4-tickspeed').textContent = `Tick: ${fmt_num(tickspeed)}s`;
+  document.getElementById('gen-4-mult').textContent = `Mult: x${fmt_num(mult)}`;
+  document.getElementById('gen-4-ev-per-sec').textContent = `EV/s: ${fmt_num(evPerSec)}`;
 }

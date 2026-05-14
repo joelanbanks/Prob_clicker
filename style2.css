@@ -122,3 +122,15 @@ main {
   padding: 0 8px;
   box-sizing: border-box;
 }
+
+.card-mid {
+  position: absolute;
+  top: 40px;        /* below header */
+  bottom: 40px;     /* above footer + progress bar */
+  left: 40px;       /* inset from edges */
+  right: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;   /* vertically centers within that zone */
+  box-sizing: border-box;
+}
